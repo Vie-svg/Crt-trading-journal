@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="CRT Trading Journal — Candle Range Theory — Système institutionnel de trading">
+<title>CRT Journal — Candle Range Theory</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ TOP BAR ══ -->
+<nav id="topbar">
+  <div class="topbar-brand">
+    <div class="dot"></div>
+    CRT JOURNAL
+  </div>
+  <button class="nav-item active" onclick="App.nav('dashboard',this)">Dashboard</button>
+  <button class="nav-item" onclick="App.nav('entry',this)">Saisir Trade</button>
+  <button class="nav-item" onclick="App.nav('plan',this)">Plan de Trade</button>
+  <button class="nav-item" onclick="App.nav('log',this)">Historique</button>
+  <button class="nav-item" onclick="App.nav('stats',this)">Performance</button>
+  <button class="nav-item" onclick="App.nav('rules',this)">Règles CRT</button>
+  <button class="nav-item" onclick="App.nav('guide',this)">Guide</button>
+  <div class="topbar-right">
+    <div class="stat-pill">Trades <span class="val" id="tb-total">0</span></div>
+    <div class="stat-pill">R Total <span class="val" id="tb-r">0.0R</span></div>
+    <div class="stat-pill">WR <span class="val" id="tb-wr">—</span></div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════ PAGE: DASHBOARD ══ -->
+<div id="page-dashboard" class="page active">
+<div class="container-lg">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Dashboard</div>
+      <div class="page-subtitle">Vue d'ensemble de ton système CRT — Candle Range Theory</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="DB.exportCSV()">↓ Export CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="DB.exportJSON()">↓ Backup JSON</button>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-cards" style="margin-bottom:24px">
+    <div class="stat-card" data-accent="green"><div class="sc-label">R Total</div><div class="sc-val" id="dash-r">—</div><div class="sc-sub">tous trades fermés</div></div>
+    <div class="stat-card" data-accent="blue"><div class="sc-label">Win Rate</div><div class="sc-val" id="dash-wr">—</div><div class="sc-sub">trades fermés</div></div>
+    <div class="stat-card" data-accent="teal"><div class="sc-label">Score Checklist Moyen</div><div class="sc-val" id="dash-score">—</div><div class="sc-sub">discipline</div></div>
+    <div class="stat-card" data-accent="orange"><div class="sc-label">Trades Totaux</div><div class="sc-val" id="dash-total">0</div><div class="sc-sub">enregistrés</div></div>
+    <div class="stat-card" data-accent="green"><div class="sc-label">Meilleure Série</div><div class="sc-val pos" id="dash-streak-w">0</div><div class="sc-sub">wins consécutifs</div></div>
+    <div class="stat-card" data-accent="red"><div class="sc-label">Trades Sous 7/10</div><div class="sc-val" id="dash-bad">0</div><div class="sc-sub">hors discipline</div></div>
+  </div>
+
+  <div class="grid-2" style="gap:20px;margin-bottom:24px">
+    <!-- Recent trades -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Trades récents</span>
+        <button class="btn btn-ghost btn-sm" onclick="App.nav('log',document.querySelectorAll('.nav-item')[3])">Voir tout →</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Date</th><th>Instrument</th><th>Modèle</th><th>Score</th><th>Résultat</th><th>R</th></tr></thead>
+          <tbody id="dash-recent"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Courbe R hebdomadaire -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Courbe R — 12 dernières semaines</span></div>
+      <div class="card-body">
+        <div id="dash-week-bars" class="mini-bar-wrap" style="height:72px"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--text3)">
+          <span>← Plus ancien</span><span>Plus récent →</span>
+        </div>
+      </div>
+      <div class="card-header" style="border-top:1px solid var(--border);border-bottom:none;margin-top:0">
+        <span class="card-title">Discipline</span>
+        <span id="dash-discipline-val" style="font-size:12px;font-weight:700;color:var(--green)">100%</span>
+      </div>
+      <div class="card-body" style="padding-top:8px">
+        <div class="progress-track">
+          <div class="progress-fill" id="dash-discipline-fill" style="width:100%;background:var(--green)"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">% de trades pris avec score ≥ 7/10</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Actions rapides</span></div>
+    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="App.nav('entry',document.querySelectorAll('.nav-item')[1])">+ Nouveau Trade</button>
+      <button class="btn btn-ghost" onclick="App.nav('plan',document.querySelectorAll('.nav-item')[2])">Calculer un Plan</button>
+      <button class="btn btn-ghost" onclick="App.nav('stats',document.querySelectorAll('.nav-item')[4])">Analyser la Performance</button>
+      <button class="btn btn-ghost" onclick="DB.exportCSV()">Exporter CSV</button>
+      <label class="btn btn-ghost" style="cursor:pointer">
+        Importer JSON <input type="file" accept=".json" style="display:none" onchange="handleImport(event)">
+      </label>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ PAGE: ENTRY ══ -->
+<div id="page-entry" class="page">
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Saisir un Trade</div>
+      <div class="page-subtitle">Remplir AVANT et APRÈS chaque trade — aucune exception</div>
+    </div>
+  </div>
+
+  <!-- CONTEXTE -->
+  <div class="label">Contexte du trade</div>
+  <div class="grid-3 field">
+    <div><label>Date</label><input type="date" id="t-date"></div>
+    <div><label>Instrument</label>
+      <select id="t-pair">
+        <option>Volatility 25 Index</option>
+        <option>Volatility 10 Index</option>
+        <option>EURUSD</option>
+        <option>Autre</option>
+      </select>
+    </div>
+    <div><label>Session</label>
+      <select id="t-session">
+        <option>London (02h-05h NY)</option>
+        <option>New York (08h-11h NY)</option>
+        <option>Asian</option>
+        <option>5PM NY (killzone)</option>
+      </select>
+    </div>
+  </div>
+  <div class="grid-3 field">
+    <div><label>Timeframe HTF</label>
+      <select id="t-htf"><option>H4</option><option>Daily</option><option>Weekly</option></select>
+    </div>
+    <div><label>Biais HTF</label>
+      <select id="t-bias"><option>Haussier</option><option>Baissier</option><option>Neutre</option></select>
+    </div>
+    <div><label>Jour de la semaine</label>
+      <select id="t-dow">
+        <option>Lundi — Accumulation</option>
+        <option>Mardi — Manipulation possible</option>
+        <option>Mercredi — Setup classique</option>
+        <option>Jeudi — Continuation</option>
+        <option>Vendredi — Prudence</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- MODÈLE CRT -->
+  <div class="label">Modèle CRT identifié</div>
+  <div class="grid-2 field">
+    <div><label>Modèle d'entrée</label>
+      <select id="t-model">
+        <option>Kiss of Death (KOD) — Prioritaire</option>
+        <option>Model #1 (C3 direct close)</option>
+        <option>C3 Direct sans pullback</option>
+        <option>Trade ignoré — Pas de setup valide</option>
+      </select>
+    </div>
+    <div><label>Phase CRT identifiée</label>
+      <select id="t-phase">
+        <option>C2 terminé → C3 attendu</option>
+        <option>C3 en cours — Distribution active</option>
+        <option>C1 — Accumulation en cours</option>
+        <option>Ambigu — Pas de lecture claire</option>
+      </select>
+    </div>
+  </div>
+  <div class="grid-3 field">
+    <div><label>Key Level actif</label>
+      <select id="t-keylevel">
+        <option>FVG (Fair Value Gap)</option>
+        <option>HOD / LOD</option>
+        <option>Weekly High / Low</option>
+        <option>Equal Highs / Lows</option>
+        <option>Old High / Old Low</option>
+        <option>Aucun — Setup invalide</option>
+      </select>
+    </div>
+    <div><label>SMT Divergence</label>
+      <select id="t-smt">
+        <option>Fort — Signal clair</option>
+        <option>Faible — Signal partiel</option>
+        <option>Absent</option>
+        <option>Non applicable</option>
+      </select>
+    </div>
+    <div><label>Séquence 1-5-9 H4</label>
+      <select id="t-seq">
+        <option>H4 #1 (00h)</option>
+        <option>H4 #5 (08h)</option>
+        <option>H4 #9 (16h)</option>
+        <option>Hors séquence</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- CHECKLIST -->
+  <div class="label">Checklist pré-trade — Minimum 7/10 requis</div>
+  <div class="checklist" id="checklist">
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>C1 Accumulation clairement identifié</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>C2 Turtle Soup validé (manipulation)</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>Close C3 confirmée (jamais en cours)</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>Key Level présent et actif (FVG/HOD/LOD)</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>SMT Divergence confirmée</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>Killzone active (London / NY / 5PM)</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>Séquence 1-5-9 H4 respectée</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>Biais HTF aligné (H4 → H1 → M15)</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>Stop Loss placé au-delà du Turtle Soup</span></div>
+    <div class="check-item" onclick="Entry.toggleCheck(this)"><div class="check-box">✓</div><span>R:R minimum 1:2 calculé et confirmé</span></div>
+  </div>
+  <div class="score-bar">
+    <div class="score-track"><div class="score-fill" id="score-fill" style="width:0%;background:var(--red)"></div></div>
+    <span class="score-label" id="score-num" style="color:var(--red)">0/10</span>
+  </div>
+  <div class="verdict verdict-no" id="verdict">✕ TRADE INVALIDE — Confluence insuffisante</div>
+
+  <!-- NIVEAUX -->
+  <div class="label" style="margin-top:20px">Niveaux d'exécution</div>
+  <div class="grid-4 field">
+    <div><label>Entrée (close C3)</label><input type="number" id="t-entry" placeholder="0.00000" step="0.00001"></div>
+    <div><label>Stop Loss</label><input type="number" id="t-sl" placeholder="Au-delà TS" step="0.00001"></div>
+    <div><label>TP1 — 50% de C1</label><input type="number" id="t-tp1" placeholder="0.00000" step="0.00001"></div>
+    <div><label>TP2 — High/Low C1</label><input type="number" id="t-tp2" placeholder="0.00000" step="0.00001"></div>
+  </div>
+  <div class="grid-3 field">
+    <div><label>Risque % du capital</label>
+      <select id="t-risk"><option value="0.5">0.5% — Standard</option><option value="1">1% — Maximum absolu</option></select>
+    </div>
+    <div><label>Direction</label>
+      <select id="t-direction"><option>Long — Haussier</option><option>Short — Baissier</option></select>
+    </div>
+    <div><label>Confluences additionnelles</label>
+      <select id="t-confluence">
+        <option>Aucune</option><option>Wednesday Model</option>
+        <option>Profil weekly aligné</option><option>Multiple (2+)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ÉTAT ÉMOTIONNEL AVANT -->
+  <div class="label">État émotionnel — Avant le trade</div>
+  <div class="pill-group" id="emo-before">
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Calme</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Concentré</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Impatient</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">FOMO</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Revanche</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Incertain</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Surconfiant</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Anxieux</button>
+    <button class="pill" onclick="Entry.selPill(this,'emo-before')">Neutre</button>
+  </div>
+  <div class="info-box info" style="margin-top:10px">
+    <div class="info-box-title">Rappel psychologique</div>
+    <div class="info-box-text">FOMO, Revanche, Anxiété = état hors discipline. Dans ces états, le taux d'erreur augmente de 60% en moyenne. Fermer la plateforme si l'un de ces états est actif.</div>
+  </div>
+
+  <!-- NOTES PRÉ-TRADE -->
+  <div class="label" style="margin-top:20px">Notes pré-trade</div>
+  <div class="field"><textarea id="t-notes-pre" placeholder="Contexte HTF identifié. Raison du setup. Ce que tu attends de ce trade. Niveau d'invalidation mental..."></textarea></div>
+
+  <!-- RÉSULTAT -->
+  <div class="label">Résultat du trade (à remplir après clôture)</div>
+  <div class="outcome-grid field">
+    <button class="outcome-btn" onclick="Entry.selOutcome(this,'WIN')">WIN</button>
+    <button class="outcome-btn" onclick="Entry.selOutcome(this,'LOSS')">LOSS</button>
+    <button class="outcome-btn" onclick="Entry.selOutcome(this,'BE')">BREAK EVEN</button>
+    <button class="outcome-btn" onclick="Entry.selOutcome(this,'SKIP')">TRADE IGNORÉ</button>
+  </div>
+
+  <!-- RÉSULTAT DÉTAIL -->
+  <div id="result-fields" style="display:none">
+    <div class="grid-3 field">
+      <div><label>R réalisé</label><input type="number" id="t-r" placeholder="+2.0" step="0.1"></div>
+      <div><label>TP atteint</label>
+        <select id="t-tp-hit">
+          <option>TP1 (50% C1)</option><option>TP2 (High/Low C1)</option>
+          <option>TP3 (Key Level HTF)</option><option>SL touché</option>
+          <option>Fermé manuellement</option>
+        </select>
+      </div>
+      <div><label>Qualité d'exécution</label>
+        <select id="t-quality">
+          <option>Parfaite — Selon le plan</option>
+          <option>Bonne — Légère déviation</option>
+          <option>Mauvaise — Hors plan</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="label">État émotionnel — Après le trade</div>
+    <div class="pill-group" id="emo-after">
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Satisfait</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Frustré</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Neutre</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Revanche</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Soulagé</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Regret</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Confiant</button>
+      <button class="pill" onclick="Entry.selPill(this,'emo-after')">Dispersé</button>
+    </div>
+
+    <div class="label" style="margin-top:16px">Règle violée (si applicable)</div>
+    <div class="field">
+      <select id="t-rule-violated">
+        <option>Aucune</option>
+        <option>Entrée sans close C3 confirmée</option>
+        <option>Setup sans Key Level</option>
+        <option>Score checklist &lt; 7/10</option>
+        <option>Stop Loss mal placé (dans C2)</option>
+        <option>Risque &gt; 1% du capital</option>
+        <option>R:R &lt; 1:2</option>
+        <option>Revenge trade après une perte</option>
+        <option>TP1 non pris à 50% de C1</option>
+        <option>Entrée hors killzone</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- POST-MORTEM -->
+  <div class="label">Post-mortem (à remplir dans l'heure suivant la clôture)</div>
+  <div class="field"><textarea id="t-notes-post" placeholder="Ce qui s'est passé exactement. Erreur commise et pourquoi. Ce que j'aurais dû faire différemment. Leçon retenue pour le prochain trade. Est-ce que j'ai respecté le plan ?"></textarea></div>
+
+  <button class="btn btn-primary btn-primary-full" onclick="Entry.save()">Enregistrer le Trade</button>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ PAGE: PLAN ══ -->
+<div id="page-plan" class="page">
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Plan de Trade</div>
+      <div class="page-subtitle">Calculateur CRT — Niveaux, risque réel, gestion psychologique</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="gap:24px">
+    <!-- Input column -->
+    <div>
+      <div class="label">Paramètres du setup</div>
+      <div class="grid-2 field">
+        <div><label>Instrument</label>
+          <select id="p-pair">
+            <option>Volatility 25 Index</option><option>Volatility 10 Index</option><option>EURUSD</option>
+          </select>
+        </div>
+        <div><label>Modèle CRT</label>
+          <select id="p-model">
+            <option>Kiss of Death (KOD)</option>
+            <option>Model #1 (C3 direct)</option>
+            <option>C3 Direct sans pullback</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-3 field">
+        <div><label>Direction</label>
+          <select id="p-dir"><option value="LONG">Long — Haussier</option><option value="SHORT">Short — Baissier</option></select>
+        </div>
+        <div><label>Capital ($)</label><input type="number" id="p-capital" value="1000" step="100"></div>
+        <div><label>Risque</label>
+          <select id="p-risk"><option value="0.5">0.5%</option><option value="1">1%</option></select>
+        </div>
+      </div>
+
+      <div class="label">Niveaux de prix</div>
+      <div class="grid-2 field">
+        <div><label>Entrée (close C3)</label><input type="number" id="p-entry" placeholder="1.08500" step="0.00001"></div>
+        <div><label>Stop Loss (au-delà TS)</label><input type="number" id="p-sl" placeholder="1.08200" step="0.00001"></div>
+      </div>
+      <div class="grid-3 field">
+        <div><label>C1 Low</label><input type="number" id="p-c1l" placeholder="Bas C1" step="0.00001"></div>
+        <div><label>C1 High</label><input type="number" id="p-c1h" placeholder="Haut C1" step="0.00001"></div>
+        <div><label>TP3 (Key Level HTF)</label><input type="number" id="p-tp3" placeholder="Optionnel" step="0.00001"></div>
+      </div>
+
+      <div class="label">État émotionnel actuel</div>
+      <div class="field">
+        <select id="p-emotion">
+          <option value="ok">Calme / Concentré — Optimal</option>
+          <option value="warn">Incertain / Légère impatience</option>
+          <option value="danger">FOMO / Revanche / Surconfiance / Anxiété</option>
+        </select>
+      </div>
+      <div id="p-emo-msg" style="display:none"></div>
+
+      <button class="btn btn-primary btn-primary-full" onclick="Plan.calculate()">Générer le Plan de Trade</button>
+    </div>
+
+    <!-- Output column -->
+    <div id="plan-output" class="hidden">
+      <div class="plan-card">
+        <div class="plan-card-head">
+          <div class="plan-head-eyebrow">Plan de Trade CRT — Institutionnel</div>
+          <div class="plan-head-title" id="p-out-title">—</div>
+        </div>
+        <div class="plan-row-item">
+          <span class="pri-label"><span class="pri-icon">📍</span>Entrée</span>
+          <span><span class="pri-val" style="color:var(--blue)" id="p-out-entry">—</span><span class="pri-note">Close confirmée C3</span></span>
+        </div>
+        <div class="plan-row-item">
+          <span class="pri-label"><span class="pri-icon">🛡</span>Stop Loss</span>
+          <span><span class="pri-val" style="color:var(--red)" id="p-out-sl">—</span><span class="pri-note">Au-delà Turtle Soup</span></span>
+        </div>
+        <div class="plan-row-item">
+          <span class="pri-label"><span class="pri-icon">🥇</span>TP1 — 50% C1</span>
+          <span><span class="pri-val" style="color:var(--green)" id="p-out-tp1">—</span><span class="pri-note" id="p-r1" style="color:var(--green)">—</span></span>
+        </div>
+        <div class="plan-row-item">
+          <span class="pri-label"><span class="pri-icon">🥈</span>TP2 — High/Low C1</span>
+          <span><span class="pri-val" style="color:var(--green)" id="p-out-tp2">—</span><span class="pri-note" id="p-r2" style="color:var(--green)">—</span></span>
+        </div>
+        <div class="plan-row-item">
+          <span class="pri-label"><span class="pri-icon">🥉</span>TP3 — Key Level HTF</span>
+          <span><span class="pri-val" style="color:var(--green)" id="p-out-tp3">—</span><span class="pri-note" id="p-r3" style="color:var(--teal)">—</span></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-header"><span class="card-title">Risque Réel</span><span style="font-size:12px;font-weight:700;color:var(--text)" id="p-rr-max">—</span></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="font-size:11px;color:var(--text3)">Capital risqué<br><span style="font-size:15px;font-weight:700;color:var(--text)" id="p-risk-amt">—</span></div>
+            <div style="font-size:11px;color:var(--text3)">Perte max (SL)<br><span style="font-size:15px;font-weight:700;color:var(--red)" id="p-max-loss">—</span></div>
+            <div style="font-size:11px;color:var(--text3)">Gain à TP1<br><span style="font-size:15px;font-weight:700;color:var(--green)" id="p-gain1">—</span></div>
+            <div style="font-size:11px;color:var(--text3)">Gain à TP2<br><span style="font-size:15px;font-weight:700;color:var(--green)" id="p-gain2">—</span></div>
+            <div style="font-size:11px;color:var(--text3)">Gain à TP3<br><span style="font-size:15px;font-weight:700;color:var(--green)" id="p-gain3">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box danger" style="margin-top:12px">
+        <div class="info-box-title">Condition d'invalidation</div>
+        <div class="info-box-text" id="p-invalid">—</div>
+      </div>
+
+      <div class="info-box warn" style="margin-top:12px">
+        <div class="info-box-title">Gestion émotionnelle & patience</div>
+        <div class="info-box-text" id="p-patience" style="white-space:pre-line">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ PAGE: LOG ══ -->
+<div id="page-log" class="page">
+<div class="container-lg">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Historique des Trades</div>
+      <div class="page-subtitle" id="log-count">0 trade(s)</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="DB.exportCSV()">↓ CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="DB.exportJSON()">↓ JSON</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmClear()">Tout effacer</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="label-inline" style="white-space:nowrap">Résultat</span>
+        <select style="width:120px" onchange="Log.applyFilter('outcome',this.value)">
+          <option value="all">Tous</option>
+          <option value="WIN">WIN</option><option value="LOSS">LOSS</option>
+          <option value="BE">Break Even</option><option value="SKIP">Ignoré</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="label-inline" style="white-space:nowrap">Modèle</span>
+        <select style="width:130px" onchange="Log.applyFilter('model',this.value)">
+          <option value="all">Tous</option>
+          <option value="KOD">KOD</option>
+          <option value="#1">Model #1</option>
+          <option value="sans">C3 Direct</option>
+          <option value="ignoré">Ignoré</option>
+        </select>
+      </div>
+      <input type="text" placeholder="Rechercher..." style="width:160px" oninput="Log.applyFilter('search',this.value)">
+      <button class="btn btn-ghost btn-sm" onclick="Log.sort('date')">Trier Date</button>
+      <button class="btn btn-ghost btn-sm" onclick="Log.sort('r')">Trier R</button>
+      <button class="btn btn-ghost btn-sm" onclick="Log.sort('score')">Trier Score</button>
+    </div>
+  </div>
+
+  <div id="log-empty" class="empty-state" style="display:none">
+    <div class="empty-state-icon">📋</div>
+    <div class="empty-state-title">Aucun trade trouvé</div>
+    Aucun résultat pour ces filtres.
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Date</th><th>Instrument</th><th>Session</th>
+            <th>Modèle</th><th>Score</th><th>Résultat</th>
+            <th>R</th><th>Règle</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ PAGE: STATS ══ -->
+<div id="page-stats" class="page">
+<div class="container-lg">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Performance & Analyse</div>
+      <div class="page-subtitle">Identifier les points forts, les patterns de perte, les dérives comportementales</div>
+    </div>
+  </div>
+  <div id="stats-content">
+    <div id="stats-cards" class="stat-cards" style="margin-bottom:24px"></div>
+    <div class="grid-2" style="gap:20px;margin-bottom:20px">
+      <div>
+        <div class="label">Score d'Edge Global</div>
+        <div class="card" id="stats-edge"></div>
+      </div>
+      <div>
+        <div class="label">Courbe R hebdomadaire</div>
+        <div class="card"><div class="card-body" id="stats-weekly"></div></div>
+      </div>
+    </div>
+    <div class="grid-2" style="gap:20px;margin-bottom:20px">
+      <div>
+        <div class="label">Performance par Modèle CRT</div>
+        <div class="rule-list" id="stats-models"></div>
+      </div>
+      <div>
+        <div class="label">Performance par Session</div>
+        <div class="rule-list" id="stats-sessions"></div>
+      </div>
+    </div>
+    <div class="label">Corrélation Émotion → Résultat</div>
+    <div class="rule-list" id="stats-emotions" style="margin-bottom:20px"></div>
+    <div class="info-box info">
+      <div class="info-box-title">Grille d'évaluation hebdomadaire — Protocole du dimanche</div>
+      <div class="info-box-text">
+        01 · R total semaine &gt; 0R &nbsp;|&nbsp; 02 · Win rate ≥ 50% sur trades avec score ≥ 7/10<br>
+        03 · Zéro trade pris avec score &lt; 7/10 &nbsp;|&nbsp; 04 · Zéro règle violée<br>
+        05 · Zéro trade en état FOMO ou Revanche &nbsp;|&nbsp; 06 · TP1 respecté sur 100% des trades gagnants<br>
+        Si une règle violée ≥ 3× en 2 semaines → pause trading 3 jours → simulation → retour réel.
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ PAGE: RULES ══ -->
+<div id="page-rules" class="page">
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Règles CRT</div>
+      <div class="page-subtitle">Candle Range Theory — Framework complet RomeoTPT / TradesbyVee</div>
+    </div>
+  </div>
+
+  <div class="label">Règles absolues — Non négociables</div>
+  <div class="rule-list" style="margin-bottom:20px">
+    <div class="rule-item"><span class="rule-num">01</span><span class="rule-text"><strong>Jamais d'entrée sans confirmation de close de bougie C3.</strong> Une bougie en mouvement n'est pas une confirmation. Attendre la clôture complète, sans exception.</span></div>
+    <div class="rule-item"><span class="rule-num">02</span><span class="rule-text"><strong>Setup sans Key Level = invalide.</strong> Un FVG, HOD/LOD, Weekly High/Low ou Equal Highs/Lows doit être présent et actif à proximité de l'entrée.</span></div>
+    <div class="rule-item"><span class="rule-num">03</span><span class="rule-text"><strong>Stop Loss au-delà du point Turtle Soup.</strong> Jamais dans le corps de C2. Jamais dans le wick. Le SL protège contre une invalidation réelle du setup.</span></div>
+    <div class="rule-item"><span class="rule-num">04</span><span class="rule-text"><strong>TP1 à 50% de C1 est obligatoire.</strong> Clôturer 50% de la position ici. Déplacer le SL au point mort immédiatement après. Cette règle ne se négocie pas.</span></div>
+    <div class="rule-item"><span class="rule-num">05</span><span class="rule-text"><strong>Risque maximum 0.5%–1% du capital par trade.</strong> Aucune exception, même pour un "setup parfait". La survie du compte passe avant le gain.</span></div>
+    <div class="rule-item"><span class="rule-num">06</span><span class="rule-text"><strong>R:R minimum 1:2 calculé avant d'ouvrir.</strong> Si le R:R n'est pas là, le trade n'existe pas. Forcer un trade avec R:R < 1:2 est une erreur de gestion.</span></div>
+    <div class="rule-item"><span class="rule-num">07</span><span class="rule-text"><strong>Checklist minimum 7/10 requis.</strong> En dessous = pas de trade, même si le setup paraît évident. La discipline est le seul edge qui ne disparaît pas.</span></div>
+    <div class="rule-item"><span class="rule-num">08</span><span class="rule-text"><strong>SMT = filtre de confirmation, pas signal d'entrée seul.</strong> La divergence SMT confirme le setup CRT, elle ne le crée pas. Sans C1/C2/C3 complet, le SMT ne suffit pas.</span></div>
+    <div class="rule-item"><span class="rule-num">09</span><span class="rule-text"><strong>KOD prioritaire sur C3 direct.</strong> Attendre le pullback est supérieur à chasser la continuation. Meilleur R:R, meilleure probabilité, moins de stress. Si KOD disponible, ne pas ignorer.</span></div>
+    <div class="rule-item"><span class="rule-num">10</span><span class="rule-text"><strong>3 erreurs fatales codifiées :</strong> Surrisque (> 1%), revenge trading après une perte, ignorer la checklist. L'une d'elles active = pause immédiate de la session.</span></div>
+  </div>
+
+  <div class="label">Séquence d'analyse obligatoire — Du HTF vers le LTF</div>
+  <div class="rule-list" style="margin-bottom:20px">
+    <div class="rule-item"><span class="rule-num" style="color:var(--purple)">H4</span><span class="rule-text"><strong>Biais HTF.</strong> Structure générale, tendance, identification C1/C2/C3 macro, Key Levels principaux actifs.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">H1</span><span class="rule-text"><strong>Confirmation.</strong> C3 en cours confirmé, Key Level actif validé, comportement du prix autour du niveau clé.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--green)">M15</span><span class="rule-text"><strong>Timing d'entrée.</strong> Close de bougie C3, killzone active, séquence 1-5-9 H4, positionnement précis du SL.</span></div>
+  </div>
+
+  <div class="label">Modèles d'entrée CRT — Hiérarchie</div>
+  <div class="rule-list" style="margin-bottom:20px">
+    <div class="rule-item"><span class="rule-num" style="color:var(--purple)">KOD</span><span class="rule-text"><strong>Kiss of Death — Modèle prioritaire.</strong> Attendre le pullback vers la zone C3 après la close. Placer un ordre limite au niveau de retour. Plus haute probabilité, meilleur R:R, moins de stress d'exécution. Toujours privilégié quand disponible.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">#1</span><span class="rule-text"><strong>Model #1 — C3 close directe.</strong> Entrée sur la close de C3 sans attendre le pullback. Exige une confluence maximale (score ≥ 8/10). R:R potentiellement plus élevé mais risque de pullback vers l'entrée important.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--orange)">C3</span><span class="rule-text"><strong>C3 Direct sans pullback — Agressif.</strong> Réservé aux configurations HTF majeures uniquement. Risque réduit à 0.5% obligatoire. Ne jamais moyenner si le prix revient contre la position.</span></div>
+  </div>
+
+  <div class="label">Profil comportemental hebdomadaire</div>
+  <div class="rule-list" style="margin-bottom:20px">
+    <div class="rule-item"><span class="rule-num">LUN</span><span class="rule-text"><strong>Accumulation probable.</strong> Biais ambigu. Observer sans trader. Définir les niveaux et zones de la semaine. Setup rare et peu fiable.</span></div>
+    <div class="rule-item"><span class="rule-num">MAR</span><span class="rule-text"><strong>Manipulation possible.</strong> C2 Turtle Soup en formation. Surveiller les faux breakouts des niveaux hebdomadaires. Patience.</span></div>
+    <div class="rule-item"><span class="rule-num">MER</span><span class="rule-text"><strong>Setup classique — Meilleur jour.</strong> Confluence hebdomadaire maximale attendue. Wednesday Model actif. Priorité absolue sur ce jour.</span></div>
+    <div class="rule-item"><span class="rule-num">JEU</span><span class="rule-text"><strong>Continuation ou distribution.</strong> Gérer les positions ouvertes. Commencer à sécuriser les profits. Pas de nouvelles entrées agressives.</span></div>
+    <div class="rule-item"><span class="rule-num">VEN</span><span class="rule-text"><strong>Prudence maximale.</strong> Fermeture de positions avant weekend. Pièges fréquents sur les niveaux clés. Réduire l'exposition. Pas de nouveaux trades sans conviction absolue.</span></div>
+  </div>
+
+  <div class="label">Séquence 1-5-9 — Bougies H4 prioritaires</div>
+  <div class="rule-list">
+    <div class="rule-item"><span class="rule-num" style="color:var(--teal)">H4 #1</span><span class="rule-text"><strong>00h00 — Ouverture asiatique.</strong> Accumulation nocturne. C1 potentiel. Observer la structure de la bougie complète.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--teal)">H4 #5</span><span class="rule-text"><strong>08h00 — Ouverture London / NY overlap.</strong> Zone de manipulation principale. C2 Turtle Soup fréquent. Killzone prioritaire.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--teal)">H4 #9</span><span class="rule-text"><strong>16h00 — Close New York.</strong> Distribution finale. C3 potentiel. 5PM NY killzone non-conventionnelle actif. Setup fréquent et sous-exploité.</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ PAGE: GUIDE ══ -->
+<div id="page-guide" class="page">
+<div class="container">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Guide d'utilisation</div>
+      <div class="page-subtitle">Comment déployer ce journal sur GitHub Pages</div>
+    </div>
+  </div>
+
+  <div class="info-box success" style="margin-bottom:20px">
+    <div class="info-box-title">Données sauvegardées localement</div>
+    <div class="info-box-text">Tous tes trades sont sauvegardés dans le localStorage de ton navigateur. Ils persistent entre les sessions. Exporte régulièrement en JSON comme backup.</div>
+  </div>
+
+  <div class="label">Déploiement GitHub Pages — Étapes complètes</div>
+  <div class="rule-list" style="margin-bottom:20px">
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">01</span><span class="rule-text"><strong>Créer un compte GitHub.</strong> Va sur github.com → Sign up → Entrer email + mot de passe + nom d'utilisateur → Confirmer l'email. Gratuit.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">02</span><span class="rule-text"><strong>Créer un nouveau repository.</strong> Clic sur le "+" en haut à droite → New repository → Nom : <code style="background:var(--bg3);padding:2px 6px;border-radius:3px">crt-journal</code> → Visibility : Public → Cocher "Add README" → Create repository.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">03</span><span class="rule-text"><strong>Uploader les fichiers.</strong> Dans le repo → Add file → Upload files → Glisser tout le dossier du journal (index.html + dossiers css/ et js/) → Commit changes.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">04</span><span class="rule-text"><strong>Activer GitHub Pages.</strong> Settings → Pages (menu gauche) → Source : Deploy from a branch → Branch : main → / (root) → Save.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">05</span><span class="rule-text"><strong>Obtenir l'URL.</strong> Attendre 2–3 minutes → Revenir sur Settings → Pages → L'URL apparaît : <code style="background:var(--bg3);padding:2px 6px;border-radius:3px">https://tonnom.github.io/crt-journal</code></span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">06</span><span class="rule-text"><strong>Ajouter en favori / raccourci.</strong> PC : Ctrl+D pour sauvegarder le favori. Téléphone : Ouvrir l'URL dans Chrome/Safari → Menu partage → "Ajouter à l'écran d'accueil". Le journal s'ouvre comme une app.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--blue)">07</span><span class="rule-text"><strong>Mise à jour.</strong> Pour mettre à jour après modification : Aller sur github.com → ton repo → cliquer sur le fichier → icône crayon → modifier → Commit changes. GitHub Pages se met à jour en 1–2 minutes.</span></div>
+  </div>
+
+  <div class="label">Backup et récupération des données</div>
+  <div class="rule-list" style="margin-bottom:20px">
+    <div class="rule-item"><span class="rule-num" style="color:var(--green)">B1</span><span class="rule-text"><strong>Export CSV</strong> → Bouton "Export CSV" sur le Dashboard. Ouvre dans Excel ou Google Sheets pour analyser. Format : UTF-8 avec BOM (compatible Excel français).</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--green)">B2</span><span class="rule-text"><strong>Backup JSON</strong> → Bouton "Backup JSON". Sauvegarde tous les trades en JSON. À faire chaque semaine. Garder sur Google Drive ou Notion.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--green)">B3</span><span class="rule-text"><strong>Import JSON</strong> → Bouton "Importer JSON" sur le Dashboard. Pour restaurer sur un nouvel appareil ou après effacement. Les doublons sont automatiquement ignorés.</span></div>
+    <div class="rule-item"><span class="rule-num" style="color:var(--orange)">⚠</span><span class="rule-text"><strong>Important :</strong> Les données sont dans le localStorage de ton navigateur. Vider le cache du navigateur efface les données. Toujours faire un backup JSON avant de vider le cache ou changer d'appareil.</span></div>
+  </div>
+
+  <div class="label">Structure des fichiers</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;font-size:12px;color:var(--text2);line-height:2">
+    <div style="color:var(--text3)">crt-journal/</div>
+    <div style="margin-left:16px">├── <span style="color:var(--green)">index.html</span> &nbsp;&nbsp;← Page principale</div>
+    <div style="margin-left:16px">├── css/</div>
+    <div style="margin-left:32px">└── <span style="color:var(--blue)">main.css</span> &nbsp;&nbsp;← Styles complets</div>
+    <div style="margin-left:16px">├── js/</div>
+    <div style="margin-left:32px">├── <span style="color:var(--blue)">data.js</span> &nbsp;&nbsp;&nbsp;&nbsp;← Base de données localStorage + export</div>
+    <div style="margin-left:32px">├── <span style="color:var(--blue)">app.js</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← Navigation + Dashboard + Log + Stats</div>
+    <div style="margin-left:32px">└── <span style="color:var(--blue)">entry.js</span> &nbsp;&nbsp;&nbsp;← Formulaire + Calculateur de plan</div>
+  </div>
+
+  <div class="info-box info" style="margin-top:20px">
+    <div class="info-box-title">Protocole hebdomadaire d'analyse — Dimanche</div>
+    <div class="info-box-text">
+      1. Aller sur Performance → vérifier le R total de la semaine<br>
+      2. Identifier le modèle le plus performant (WR + R)<br>
+      3. Identifier la session la plus rentable<br>
+      4. Vérifier si une émotion dangereuse corrèle avec des pertes<br>
+      5. Compter les trades avec score &lt; 7/10 → objectif : 0<br>
+      6. Exporter le CSV et le sauvegarder dans ton dossier semaine<br>
+      7. Définir 1 point fort et 1 point à corriger pour la semaine suivante
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════ MODAL: TRADE DETAIL ══ -->
+<div class="modal-overlay" id="trade-modal" onclick="if(event.target===this)Log.closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Détail du trade</div>
+      <button class="modal-close" onclick="Log.closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/entry.js"></script>
+<script>
+  function confirmClear() {
+    if (confirm('Effacer tous les trades ? Cette action est irréversible.\n\nFaites un backup JSON avant.')) {
+      DB.clear(); Log.render(); App.updateTopbar();
+      Toast.show('Tous les trades ont été effacés', 'info');
+    }
+  }
+  function handleImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    DB.importJSON(file).then(count => {
+      Toast.show(count + ' trades importés');
+      App.updateTopbar();
+      if (App.currentPage === 'log') Log.render();
+    }).catch(err => Toast.show('Erreur import: ' + err.message, 'error'));
+  }
+  App.init();
+</script>
+</body>
+</html>
